@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { commentSchema } from '../validators.js'
 import db from '../db.js'
 import type { RowDataPacket, ResultSetHeader } from 'mysql2'
+import { logActivity } from './activity.js'
 
 const router = Router({ mergeParams: true })
 
@@ -35,7 +36,7 @@ router.post('/', async (req: Request, res: Response) => {
     const { comment_text } = parsed.data
 
     await db.query<ResultSetHeader>(
-      'INSERT INTO itinerary_comments (id, itinerary_id, user_id, comment_text) VALUES (?, ?, ?, ?)',
+      'INSERT INTO itinerary_comments (id, itinerary_id, user_id, text) VALUES (?, ?, ?, ?)',
       [id, itineraryId, user_id, comment_text]
     )
 
@@ -43,6 +44,10 @@ router.post('/', async (req: Request, res: Response) => {
       'SELECT * FROM itinerary_comments WHERE id = ?',
       [id]
     )
+
+    // Log activity
+    await logActivity(itineraryId, user_id, 'comment_added', `Added comment`)
+
     res.status(201).json(result[0])
   } catch (error) {
     console.error('Error creating comment:', error)

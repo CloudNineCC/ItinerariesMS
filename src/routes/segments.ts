@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { segmentSchema } from '../validators.js'
 import db from '../db.js'
 import type { RowDataPacket, ResultSetHeader } from 'mysql2'
+import { logActivity } from './activity.js'
 
 const router = Router({ mergeParams: true })
 
@@ -50,6 +51,11 @@ router.post('/', async (req: Request, res: Response) => {
       'SELECT * FROM itinerary_segments WHERE id = ?',
       [id]
     )
+
+    // Log activity - get user from request body or use 'system'
+    const userId = (req.body.user_id as string) || 'system'
+    await logActivity(itineraryId, userId, 'segment_added', `Added segment to ${city_id}`)
+
     res.status(201).json(result[0])
   } catch (error) {
     console.error('Error creating segment:', error)
@@ -60,14 +66,19 @@ router.post('/', async (req: Request, res: Response) => {
 // DELETE /itineraries/:id/segments/:segmentId
 router.delete('/:segmentId', async (req: Request, res: Response) => {
   try {
+    const itineraryId = req.params.id
     const [result] = await db.query<ResultSetHeader>(
       'DELETE FROM itinerary_segments WHERE id = ? AND itinerary_id = ?',
-      [req.params.segmentId, req.params.id]
+      [req.params.segmentId, itineraryId]
     )
 
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Segment not found' })
     }
+
+    // Log activity
+    const userId = (req as any).user?.id || 'system'
+    await logActivity(itineraryId, userId, 'segment_deleted', `Deleted segment ${req.params.segmentId}`)
 
     res.status(204).send()
   } catch (error) {

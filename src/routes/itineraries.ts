@@ -4,6 +4,7 @@ import { itinerarySchema } from '../validators.js'
 import db from '../db.js'
 import type { RowDataPacket, ResultSetHeader } from 'mysql2'
 import { publishItineraryEvent } from '../pubsub-client.js'
+import { logActivity } from './activity.js'
 
 const router = Router()
 
@@ -18,6 +19,26 @@ router.get('/', async (_req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching itineraries:', error)
     res.status(500).json({ error: 'Failed to fetch itineraries' })
+  }
+})
+
+// GET /itineraries/:id
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT id, name, owner_user_id, description, status, start_date, end_date,
+       created_at, updated_at FROM itineraries WHERE id = ?`,
+      [req.params.id]
+    )
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Itinerary not found' })
+    }
+
+    res.json(rows[0])
+  } catch (error) {
+    console.error('Error fetching itinerary:', error)
+    res.status(500).json({ error: 'Failed to fetch itinerary' })
   }
 })
 
@@ -42,7 +63,10 @@ router.post('/', async (req: Request, res: Response) => {
       'SELECT id, name, owner_user_id, description, status, start_date, end_date, created_at, updated_at FROM itineraries WHERE id = ?',
       [id]
     )
-    
+
+    // Log activity
+    await logActivity(id, owner_user_id, 'created', `Created itinerary: ${name}`)
+
     // Publish event to Pub/Sub
     await publishItineraryEvent({
       event_type: 'itinerary_created',
@@ -51,7 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
       name: name,
       timestamp: new Date().toISOString()
     })
-    
+
     res.status(201).json(result[0])
   } catch (error) {
     console.error('Error creating itinerary:', error)

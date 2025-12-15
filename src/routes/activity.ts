@@ -1,8 +1,28 @@
 import { Router, Request, Response } from 'express'
+import { randomUUID } from 'node:crypto'
 import db from '../db.js'
-import type { RowDataPacket } from 'mysql2'
+import type { RowDataPacket, ResultSetHeader } from 'mysql2'
 
 const router = Router({ mergeParams: true })
+
+// Helper function to log activity
+export async function logActivity(
+  itineraryId: string,
+  userId: string,
+  action: string,
+  details?: string
+) {
+  try {
+    const id = randomUUID()
+    await db.query<ResultSetHeader>(
+      'INSERT INTO itinerary_activity (id, itinerary_id, user_id, action, details) VALUES (?, ?, ?, ?, ?)',
+      [id, itineraryId, userId, action, details || null]
+    )
+  } catch (error) {
+    console.error('Error logging activity:', error)
+    // Don't throw - activity logging shouldn't break the main operation
+  }
+}
 
 // GET /itineraries/:id/activity
 router.get('/', async (req: Request, res: Response) => {
