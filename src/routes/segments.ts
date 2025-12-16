@@ -7,7 +7,6 @@ import { logActivity } from './activity.js'
 
 const router = Router({ mergeParams: true })
 
-// GET /itineraries/:id/segments
 router.get('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -22,7 +21,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-// POST /itineraries/:id/segments
 router.post('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -52,7 +50,6 @@ router.post('/', async (req: Request, res: Response) => {
       [id]
     )
 
-    // Log activity - get user from request body or use 'system'
     const userId = (req.body.user_id as string) || 'system'
     await logActivity(itineraryId, userId, 'segment_added', `Added segment to ${city_id}`)
 
@@ -63,7 +60,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-// DELETE /itineraries/:id/segments/:segmentId
 router.delete('/:segmentId', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -76,7 +72,6 @@ router.delete('/:segmentId', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Segment not found' })
     }
 
-    // Log activity
     const userId = (req as any).user?.id || 'system'
     await logActivity(itineraryId, userId, 'segment_deleted', `Deleted segment ${req.params.segmentId}`)
 

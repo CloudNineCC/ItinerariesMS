@@ -8,7 +8,6 @@ import { logActivity } from './activity.js'
 
 const router = Router()
 
-// GET /itineraries
 router.get('/', async (_req: Request, res: Response) => {
   try {
     const [rows] = await db.query<RowDataPacket[]>(
@@ -22,7 +21,6 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 })
 
-// GET /itineraries/:id
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const [rows] = await db.query<RowDataPacket[]>(
@@ -42,7 +40,6 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// POST /itineraries
 router.post('/', async (req: Request, res: Response) => {
   try {
     const parsed = itinerarySchema.safeParse(req.body)
@@ -64,10 +61,8 @@ router.post('/', async (req: Request, res: Response) => {
       [id]
     )
 
-    // Log activity
     await logActivity(id, owner_user_id, 'created', `Created itinerary: ${name}`)
 
-    // Publish event to Pub/Sub
     await publishItineraryEvent({
       event_type: 'itinerary_created',
       itinerary_id: id,
@@ -83,7 +78,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-// PUT /itineraries/:id
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const id = req.params.id
@@ -142,7 +136,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 })
 
-// DELETE /itineraries/:id
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const [result] = await db.query<ResultSetHeader>(

@@ -7,7 +7,6 @@ import { logActivity } from './activity.js'
 
 const router = Router({ mergeParams: true })
 
-// GET /itineraries/:id/comments
 router.get('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -22,7 +21,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-// POST /itineraries/:id/comments
 router.post('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -45,7 +43,6 @@ router.post('/', async (req: Request, res: Response) => {
       [id]
     )
 
-    // Log activity
     await logActivity(itineraryId, user_id, 'comment_added', `Added comment`)
 
     res.status(201).json(result[0])
@@ -55,7 +52,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-// DELETE /itineraries/:id/comments/:commentId
 router.delete('/:commentId', async (req: Request, res: Response) => {
   try {
     const [result] = await db.query<ResultSetHeader>(

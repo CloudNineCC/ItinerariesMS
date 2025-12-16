@@ -13,15 +13,13 @@ export async function publishItineraryEvent(eventData: {
   try {
     const topic = pubsub.topic(TOPIC_NAME)
     const messageBuffer = Buffer.from(JSON.stringify(eventData))
-    
+
     await topic.publishMessage({
       data: messageBuffer
     })
-    
+
     console.log(`Published event to ${TOPIC_NAME}:`, eventData)
   } catch (error) {
-    // Log error but don't fail the request
     console.error('Failed to publish Pub/Sub event:', error)
   }
 }
-

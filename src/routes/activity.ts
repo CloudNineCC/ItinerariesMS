@@ -5,7 +5,6 @@ import type { RowDataPacket, ResultSetHeader } from 'mysql2'
 
 const router = Router({ mergeParams: true })
 
-// Helper function to log activity
 export async function logActivity(
   itineraryId: string,
   userId: string,
@@ -20,11 +19,9 @@ export async function logActivity(
     )
   } catch (error) {
     console.error('Error logging activity:', error)
-    // Don't throw - activity logging shouldn't break the main operation
   }
 }
 
-// GET /itineraries/:id/activity
 router.get('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id

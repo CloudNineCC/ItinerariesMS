@@ -6,7 +6,6 @@ import type { RowDataPacket, ResultSetHeader } from 'mysql2'
 
 const router = Router({ mergeParams: true })
 
-// GET /itineraries/:id/roles
 router.get('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -21,7 +20,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-// POST /itineraries/:id/roles
 router.post('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -49,7 +47,6 @@ router.post('/', async (req: Request, res: Response) => {
   }
 })
 
-// DELETE /itineraries/:id/roles/:roleId
 router.delete('/:roleId', async (req: Request, res: Response) => {
   try {
     const [result] = await db.query<ResultSetHeader>(

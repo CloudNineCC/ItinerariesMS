@@ -4,7 +4,6 @@ import type { RowDataPacket } from 'mysql2'
 
 const router = Router({ mergeParams: true })
 
-// GET /itineraries/:id/budget
 router.get('/', async (req: Request, res: Response) => {
   try {
     const itineraryId = req.params.id
@@ -18,7 +17,7 @@ router.get('/', async (req: Request, res: Response) => {
     }
 
     const PRICING_MS_URL = process.env.PRICING_MS_URL || 'http://localhost:3002'
-    
+
     res.json({
       message: 'Budget calculation requires PricingMS integration',
       pricing_ms_url: PRICING_MS_URL,
