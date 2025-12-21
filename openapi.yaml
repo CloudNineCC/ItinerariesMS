@@ -1,0 +1,743 @@
+openapi: 3.0.3
+info:
+  title: Itineraries Microservice API
+  description: |
+    API-first definition for the Itineraries Microservice.
+    This service manages travel itineraries, segments, comments, roles, and activity tracking.
+
+    ## Features
+    - CRUD operations for itineraries
+    - Segment management for trip destinations
+    - Collaborative roles and permissions
+    - Comment threads for itinerary discussions
+    - Activity logging and audit trail
+    - Budget estimation integration
+
+    ## Events
+    - Publishes `itinerary_created` events to Pub/Sub topic for Cloud Function processing
+  version: 1.0.0
+  contact:
+    name: Cloud Computing Project
+    email: ra3295@columbia.edu
+
+servers:
+  - url: https://itineraries-ms-641211583543.us-central1.run.app
+    description: Production (Cloud Run)
+  - url: http://localhost:3003
+    description: Local development
+
+tags:
+  - name: Itineraries
+    description: Core itinerary management
+  - name: Segments
+    description: Trip segments/destinations within an itinerary
+  - name: Comments
+    description: Collaborative comments on itineraries
+  - name: Roles
+    description: User roles and permissions for itineraries
+  - name: Activity
+    description: Activity log and audit trail
+  - name: Budget
+    description: Budget estimation for itineraries
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the service
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  service:
+                    type: string
+                    example: ms-itineraries
+
+  /itineraries:
+    get:
+      tags: [Itineraries]
+      summary: List all itineraries
+      description: Retrieves all itineraries ordered by creation date (newest first)
+      responses:
+        '200':
+          description: Array of itineraries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Itinerary'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Itineraries]
+      summary: Create a new itinerary
+      description: |
+        Creates a new itinerary and publishes an `itinerary_created` event to Pub/Sub.
+        This event triggers the Cloud Function for additional processing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItineraryInput'
+            example:
+              name: "European Adventure"
+              owner_user_id: "user-123"
+              description: "Two weeks exploring Europe"
+              status: "DRAFT"
+              start_date: "2025-06-01"
+              end_date: "2025-06-14"
+      responses:
+        '201':
+          description: Itinerary created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Itinerary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Itineraries]
+      summary: Get itinerary by ID
+      description: Retrieves a single itinerary by its unique identifier
+      responses:
+        '200':
+          description: Itinerary details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Itinerary'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [Itineraries]
+      summary: Update an itinerary
+      description: Updates an existing itinerary with partial data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItineraryUpdate'
+      responses:
+        '200':
+          description: Itinerary updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Itinerary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Itineraries]
+      summary: Delete an itinerary
+      description: Permanently deletes an itinerary and all associated data
+      responses:
+        '204':
+          description: Itinerary deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/segments:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Segments]
+      summary: List segments for an itinerary
+      description: Retrieves all segments ordered by sequence
+      responses:
+        '200':
+          description: Array of segments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Segment'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Segments]
+      summary: Add a segment to an itinerary
+      description: |
+        Creates a new segment (destination stop) within an itinerary.
+        If sequence_order is not provided, the segment is added at the end.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SegmentInput'
+            example:
+              city_id: "city-uuid-123"
+              start_date: "2025-06-01"
+              end_date: "2025-06-05"
+              lodging_class: "STANDARD"
+              notes: "Visit the Eiffel Tower"
+      responses:
+        '201':
+          description: Segment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Segment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/segments/{segmentId}:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+      - $ref: '#/components/parameters/SegmentId'
+
+    delete:
+      tags: [Segments]
+      summary: Delete a segment
+      description: Removes a segment from the itinerary
+      responses:
+        '204':
+          description: Segment deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/comments:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Comments]
+      summary: List comments for an itinerary
+      description: Retrieves all comments ordered by creation date (newest first)
+      responses:
+        '200':
+          description: Array of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Comments]
+      summary: Add a comment to an itinerary
+      description: Creates a new comment on the itinerary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInput'
+            example:
+              user_id: "user-123"
+              comment_text: "Great idea for the trip!"
+      responses:
+        '201':
+          description: Comment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/comments/{commentId}:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+      - $ref: '#/components/parameters/CommentId'
+
+    delete:
+      tags: [Comments]
+      summary: Delete a comment
+      description: Removes a comment from the itinerary
+      responses:
+        '204':
+          description: Comment deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/roles:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Roles]
+      summary: List roles for an itinerary
+      description: Retrieves all user roles/permissions for the itinerary
+      responses:
+        '200':
+          description: Array of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Roles]
+      summary: Add a role to an itinerary
+      description: Assigns a user role/permission for the itinerary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleInput'
+            example:
+              user_id: "user-456"
+              role: "EDITOR"
+      responses:
+        '201':
+          description: Role created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/roles/{roleId}:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+      - $ref: '#/components/parameters/RoleId'
+
+    delete:
+      tags: [Roles]
+      summary: Delete a role
+      description: Removes a user's role from the itinerary
+      responses:
+        '204':
+          description: Role deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/activity:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Activity]
+      summary: Get activity log for an itinerary
+      description: Retrieves the last 50 activity entries for audit trail
+      responses:
+        '200':
+          description: Array of activity entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Activity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /itineraries/{id}/budget:
+    parameters:
+      - $ref: '#/components/parameters/ItineraryId'
+
+    get:
+      tags: [Budget]
+      summary: Get budget estimation for an itinerary
+      description: |
+        Returns budget information for the itinerary.
+        Requires integration with PricingMS for full cost calculation.
+      responses:
+        '200':
+          description: Budget information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Budget'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    ItineraryId:
+      name: id
+      in: path
+      required: true
+      description: Unique identifier of the itinerary (UUID)
+      schema:
+        type: string
+        format: uuid
+
+    SegmentId:
+      name: segmentId
+      in: path
+      required: true
+      description: Unique identifier of the segment (UUID)
+      schema:
+        type: string
+        format: uuid
+
+    CommentId:
+      name: commentId
+      in: path
+      required: true
+      description: Unique identifier of the comment (UUID)
+      schema:
+        type: string
+        format: uuid
+
+    RoleId:
+      name: roleId
+      in: path
+      required: true
+      description: Unique identifier of the role (UUID)
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Itinerary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier
+        name:
+          type: string
+          description: Name of the itinerary
+        owner_user_id:
+          type: string
+          description: User ID of the itinerary owner
+        description:
+          type: string
+          nullable: true
+          description: Optional description
+        status:
+          type: string
+          enum: [DRAFT, PLANNED, BOOKED, COMPLETED, CANCELLED]
+          description: Current status of the itinerary
+        start_date:
+          type: string
+          format: date
+          nullable: true
+          description: Trip start date
+        end_date:
+          type: string
+          format: date
+          nullable: true
+          description: Trip end date
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    ItineraryInput:
+      type: object
+      required:
+        - name
+        - owner_user_id
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Optional custom UUID
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Name of the itinerary
+        owner_user_id:
+          type: string
+          description: User ID of the owner
+        description:
+          type: string
+          maxLength: 1000
+          description: Optional description
+        status:
+          type: string
+          enum: [DRAFT, PLANNED, BOOKED, COMPLETED, CANCELLED]
+          default: DRAFT
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    ItineraryUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          type: string
+          enum: [DRAFT, PLANNED, BOOKED, COMPLETED, CANCELLED]
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+
+    Segment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        itinerary_id:
+          type: string
+          format: uuid
+        city_id:
+          type: string
+          format: uuid
+          description: Reference to city in DestinationsMS
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        lodging_class:
+          type: string
+          enum: [HOSTEL, STANDARD, PREMIUM]
+          description: Reference to lodging class in PricingMS
+        sequence_order:
+          type: integer
+          description: Order of this segment in the itinerary
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SegmentInput:
+      type: object
+      required:
+        - city_id
+        - start_date
+        - end_date
+        - lodging_class
+      properties:
+        id:
+          type: string
+          format: uuid
+        city_id:
+          type: string
+          format: uuid
+          description: Must exist in DestinationsMS (foreign key constraint enforced by composite)
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        lodging_class:
+          type: string
+          enum: [HOSTEL, STANDARD, PREMIUM]
+          description: Must exist in PricingMS (foreign key constraint enforced by composite)
+        sequence_order:
+          type: integer
+          description: Auto-assigned if not provided
+        notes:
+          type: string
+          maxLength: 500
+
+    Comment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        itinerary_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    CommentInput:
+      type: object
+      required:
+        - comment_text
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          default: anonymous
+        comment_text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        itinerary_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, EDITOR, VIEWER]
+        added_at:
+          type: string
+          format: date-time
+
+    RoleInput:
+      type: object
+      required:
+        - user_id
+        - role
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, EDITOR, VIEWER]
+
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        itinerary_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+        action:
+          type: string
+          description: Type of action (created, segment_added, comment_added, etc.)
+        details:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Budget:
+      type: object
+      properties:
+        message:
+          type: string
+        pricing_ms_url:
+          type: string
+          format: uri
+        segments:
+          type: array
+          items:
+            type: object
+            properties:
+              city_id:
+                type: string
+                format: uuid
+              start_date:
+                type: string
+                format: date
+              end_date:
+                type: string
+                format: date
+              lodging_class:
+                type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Validation failed"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Itinerary not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Failed to process request"
